@@ -63,7 +63,7 @@ export default function WalletView() {
   const wallet = data?.wallet;
 
   return (
-    <div className="p-4 sm:p-8 flex flex-col gap-6 max-h-full">
+    <div className="p-4 sm:p-8 flex flex-col gap-6 flex-1">
       {/* Header Card */}
       <div className="glass-panel p-6 rounded-3xl relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none transition-transform group-hover:scale-110 duration-700">

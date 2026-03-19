@@ -173,9 +173,9 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto relative">
-          <div className="absolute inset-0 max-w-7xl mx-auto">
-             {children}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto min-h-full flex flex-col">
+            {children}
           </div>
         </div>
       </main>

@@ -1,7 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, walletsTable, transactionsTable } from "@workspace/db";
-import { eq, desc, count } from "drizzle-orm";
-import { isValidSolanaAddress, fetchRecentTransactions } from "../lib/solana.js";
+import { WalletModel, TransactionModel } from "@workspace/db";
+import { isValidSolanaAddress } from "../lib/solana.js";
 import { scheduleWalletPolling } from "../lib/queue.js";
 
 const router: IRouter = Router();
@@ -21,82 +20,84 @@ router.post("/wallet", async (req, res): Promise<void> => {
     return;
   }
 
-  const existing = await db
-    .select()
-    .from(walletsTable)
-    .where(eq(walletsTable.address, trimmed))
-    .limit(1);
+  const existing = await WalletModel.findOne({ address: trimmed });
 
-  if (existing.length > 0) {
-    const wallet = existing[0];
-    const [{ value: txCount }] = await db
-      .select({ value: count() })
-      .from(transactionsTable)
-      .where(eq(transactionsTable.walletAddress, trimmed));
-
-    res.status(409).json({ ...wallet, transactionCount: Number(txCount) });
+  if (existing) {
+    const txCount = await TransactionModel.countDocuments({ walletAddress: trimmed });
+    res.status(409).json({
+      id: existing._id.toString(),
+      address: existing.address,
+      createdAt: existing.createdAt,
+      transactionCount: txCount,
+    });
     return;
   }
 
-  const [wallet] = await db
-    .insert(walletsTable)
-    .values({ address: trimmed })
-    .returning();
+  const wallet = await WalletModel.create({ address: trimmed });
 
-  await scheduleWalletPolling(trimmed, true);
+  scheduleWalletPolling(trimmed, true);
 
-  res.status(201).json({ ...wallet, transactionCount: 0 });
+  res.status(201).json({
+    id: wallet._id.toString(),
+    address: wallet.address,
+    createdAt: wallet.createdAt,
+    transactionCount: 0,
+  });
 });
 
 router.get("/wallet/:address", async (req, res): Promise<void> => {
-  const rawAddress = Array.isArray(req.params.address)
-    ? req.params.address[0]
-    : req.params.address;
+  const rawAddress = req.params.address;
 
-  const wallets = await db
-    .select()
-    .from(walletsTable)
-    .where(eq(walletsTable.address, rawAddress))
-    .limit(1);
+  const wallet = await WalletModel.findOne({ address: rawAddress });
 
-  if (wallets.length === 0) {
+  if (!wallet) {
     res.status(404).json({ error: "Wallet not found" });
     return;
   }
 
-  const wallet = wallets[0];
-
   const rawLimit = req.query.limit;
   const limit = rawLimit ? parseInt(String(rawLimit), 10) : 50;
 
-  const transactions = await db
-    .select()
-    .from(transactionsTable)
-    .where(eq(transactionsTable.walletAddress, rawAddress))
-    .orderBy(desc(transactionsTable.slot))
-    .limit(limit);
-
-  const [{ value: txCount }] = await db
-    .select({ value: count() })
-    .from(transactionsTable)
-    .where(eq(transactionsTable.walletAddress, rawAddress));
+  const [transactions, txCount] = await Promise.all([
+    TransactionModel.find({ walletAddress: rawAddress })
+      .sort({ slot: -1 })
+      .limit(limit)
+      .lean(),
+    TransactionModel.countDocuments({ walletAddress: rawAddress }),
+  ]);
 
   res.json({
-    wallet: { ...wallet, transactionCount: Number(txCount) },
-    transactions,
+    wallet: {
+      id: wallet._id.toString(),
+      address: wallet.address,
+      createdAt: wallet.createdAt,
+      transactionCount: txCount,
+    },
+    transactions: transactions.map((tx) => ({
+      id: tx._id.toString(),
+      signature: tx.signature,
+      walletAddress: tx.walletAddress,
+      slot: tx.slot,
+      blockTime: tx.blockTime,
+      fee: tx.fee,
+      status: tx.status,
+      createdAt: tx.createdAt,
+    })),
   });
 });
 
 router.get("/wallets", async (_req, res): Promise<void> => {
-  const wallets = await db.select().from(walletsTable).orderBy(desc(walletsTable.createdAt));
+  const wallets = await WalletModel.find().sort({ createdAt: -1 }).lean();
 
   const withCounts = await Promise.all(
     wallets.map(async (w) => {
-      const [{ value: txCount }] = await db
-        .select({ value: count() })
-        .from(transactionsTable)
-        .where(eq(transactionsTable.walletAddress, w.address));
-      return { ...w, transactionCount: Number(txCount) };
+      const txCount = await TransactionModel.countDocuments({ walletAddress: w.address });
+      return {
+        id: w._id.toString(),
+        address: w.address,
+        createdAt: w.createdAt,
+        transactionCount: txCount,
+      };
     })
   );
 

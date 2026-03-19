@@ -1,6 +1,5 @@
-import { db, walletsTable, transactionsTable } from "@workspace/db";
+import { WalletModel, TransactionModel } from "@workspace/db";
 import { fetchRecentTransactions } from "./solana.js";
-import { inArray } from "drizzle-orm";
 import { emitTransactions } from "./websocket.js";
 
 const POLL_INTERVAL_MS = 20000;
@@ -18,12 +17,11 @@ async function pollWallet(address: string): Promise<void> {
     }
 
     const fetchedSignatures = transactions.map((tx) => tx.signature);
-    const existingRows = await db
-      .select({ signature: transactionsTable.signature })
-      .from(transactionsTable)
-      .where(inArray(transactionsTable.signature, fetchedSignatures));
-
-    const existingSet = new Set(existingRows.map((r) => r.signature));
+    const existingDocs = await TransactionModel.find(
+      { signature: { $in: fetchedSignatures } },
+      { signature: 1 }
+    ).lean();
+    const existingSet = new Set(existingDocs.map((d) => d.signature));
     const newTxns = transactions.filter((tx) => !existingSet.has(tx.signature));
 
     if (newTxns.length === 0) {
@@ -33,24 +31,37 @@ async function pollWallet(address: string): Promise<void> {
 
     console.log(`[Poller] Found ${newTxns.length} new transactions for ${address}`);
 
-    const inserted = await db
-      .insert(transactionsTable)
-      .values(
-        newTxns.map((tx) => ({
-          signature: tx.signature,
-          walletAddress: address,
-          slot: tx.slot,
-          blockTime: tx.blockTime,
-          fee: tx.fee,
-          status: tx.status,
-          raw: tx.raw as Record<string, unknown>,
-        }))
-      )
-      .onConflictDoNothing()
-      .returning();
+    const docs = newTxns.map((tx) => ({
+      signature: tx.signature,
+      walletAddress: address,
+      slot: tx.slot,
+      blockTime: tx.blockTime,
+      fee: tx.fee,
+      status: tx.status,
+      raw: tx.raw as Record<string, unknown>,
+    }));
+
+    const inserted = await TransactionModel.insertMany(docs, { ordered: false }).catch((err) => {
+      if (err.code === 11000) {
+        return err.insertedDocs ?? [];
+      }
+      throw err;
+    });
 
     if (inserted.length > 0) {
-      emitTransactions(address, inserted);
+      emitTransactions(
+        address,
+        inserted.map((d: any) => ({
+          id: d._id.toString(),
+          signature: d.signature,
+          walletAddress: d.walletAddress,
+          slot: d.slot,
+          blockTime: d.blockTime,
+          fee: d.fee,
+          status: d.status,
+          createdAt: d.createdAt,
+        }))
+      );
     }
   } catch (err: any) {
     console.error(`[Poller] Error polling ${address}: ${err.message}`);
@@ -85,12 +96,9 @@ export function stopWalletPolling(address: string): void {
 }
 
 export async function scheduleAllWallets(): Promise<void> {
-  const wallets = await db.select().from(walletsTable);
+  const wallets = await WalletModel.find({}, { address: 1 }).lean();
   for (const wallet of wallets) {
     scheduleWalletPolling(wallet.address, false);
   }
   console.log(`[Poller] Scheduled ${wallets.length} wallets`);
-}
-
-export function startWorker(): void {
 }

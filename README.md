@@ -19,7 +19,7 @@ What makes this Web3:
 
 ## Features
 
-- Track any Solana mainnet wallet (read-only, no wallet connection)
+- Track any Solana (mainnet) wallet (read-only, no wallet connection)
 - Live transaction feed via WebSocket — new transactions appear without refreshing
 - Persistent storage with signature-level deduplication
 - Multi-wallet tracking from a single dashboard

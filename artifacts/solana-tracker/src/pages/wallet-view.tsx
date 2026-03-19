@@ -1,7 +1,7 @@
 import { useRoute } from "wouter";
 import { useGetWalletTransactions } from "@workspace/api-client-react";
 import { useSolanaWebSocket } from "@/hooks/use-solana-ws";
-import { Copy, ExternalLink, Activity, ArrowDownLeft, ArrowUpRight, Wifi, WifiOff } from "lucide-react";
+import { Copy, ExternalLink, Activity, Loader2, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";

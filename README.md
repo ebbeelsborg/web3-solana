@@ -17,20 +17,6 @@ What makes this Web3:
 
 ---
 
-## Architecture
-
-| Component | Purpose |
-|-----------|---------|
-| **React + Vite frontend** | Dashboard to add wallets, live transaction feed per wallet. Uses React Query for REST and a WebSocket hook to merge incoming transactions into the cache without refresh. |
-| **Express API** | REST endpoints to register wallets, fetch wallet + transactions, list all tracked wallets. WebSocket server at `/ws` for live push. |
-| **BullMQ worker** | Background jobs per wallet (every 20s). Calls Solana RPC (`getSignaturesForAddress`), deduplicates against DB, inserts new transactions, broadcasts via WebSocket. Redis-backed so jobs survive restarts. |
-| **MongoDB** | Stores wallets and transactions. Used as a cache and for deduplication — the blockchain is the source of truth. |
-| **Solana RPC** | The canonical source. We only read; we never sign or submit. |
-
-Flow: User adds wallet → API saves to MongoDB and enqueues a repeatable BullMQ job → Worker polls Solana, inserts new txs, emits over WebSocket → UI updates live.
-
----
-
 ## Features
 
 - Track any Solana mainnet wallet (read-only, no wallet connection)
@@ -42,9 +28,40 @@ Flow: User adds wallet → API saves to MongoDB and enqueues a repeatable BullMQ
 
 ---
 
+## Architecture
+
+| Component | Purpose |
+|-----------|---------|
+| **Frontend** (React + Vite) | Dashboard to add wallets, live transaction feed per wallet. React Query for REST; WebSocket hook merges incoming txs into the cache without refresh. |
+| **Backend** (Express) | REST endpoints to register wallets, fetch wallet + transactions, list all tracked wallets. WebSocket server at `/ws` for live push. |
+| **Job queue** (BullMQ, Redis) | Async background jobs per wallet (every 20s). Polls Solana RPC, deduplicates against DB, inserts new txs, broadcasts via WebSocket. Redis-backed so jobs survive restarts. |
+| **Database** (MongoDB) | Stores wallets and transactions. Cache and deduplication — the blockchain is the source of truth. |
+| **Blockchain** (Solana RPC) | Canonical source. We only read; we never sign or submit. |
+
+Flow: User adds wallet → API saves to MongoDB and enqueues a repeatable BullMQ job → Worker polls Solana, inserts new txs, emits over WebSocket → UI updates live.
+
+**Project structure**
+
+| Architecture | Folder |
+|--------------|--------|
+| Frontend | `artifacts/solana-tracker/` |
+| Backend | `artifacts/api-server/` (app, routes) |
+| Job queue | `artifacts/api-server/src/lib/queue.ts`, `redis.ts` |
+| Database | `lib/db/` (models, connection) |
+| Blockchain client | `artifacts/api-server/src/lib/solana.ts` |
+
+Shared: `lib/api-spec/`, `lib/api-client-react/`, `lib/api-zod/` (OpenAPI codegen).
+
+---
+
 ## Tech Stack
 
-React 19, Vite, Tailwind, Express 5, MongoDB, BullMQ, Redis, `@solana/web3.js`. Monorepo with pnpm workspaces.
+- **Frontend:** React 19, Vite, Tailwind
+- **Backend:** Node.js, Express 5 (REST API + WebSocket)
+- **Job queue:** BullMQ, Redis (async background jobs)
+- **Database:** MongoDB
+- **Blockchain:** `@solana/web3.js`
+- **Monorepo:** pnpm workspaces
 
 ---
 

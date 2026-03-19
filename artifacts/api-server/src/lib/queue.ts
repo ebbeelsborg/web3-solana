@@ -2,14 +2,14 @@ import { Queue, Worker } from "bullmq";
 import { WalletModel, TransactionModel } from "@workspace/db";
 import { fetchRecentTransactions } from "./solana.js";
 import { emitTransactions } from "./websocket.js";
-import { redis } from "./redis.js";
+import { bullRedis } from "./redis.js";
 import { invalidateWallet } from "./cache.js";
 
 const QUEUE_NAME = "wallet-tracker";
 const POLL_INTERVAL_MS = 20000;
 
 export const walletQueue = new Queue<{ address: string }>(QUEUE_NAME, {
-  connection: redis,
+  connection: bullRedis,
   defaultJobOptions: {
     removeOnComplete: { count: 1000 },
     removeOnFail: { count: 5000 },
@@ -90,7 +90,7 @@ export const walletWorker = new Worker<{ address: string }>(
     await pollWallet(job.data.address);
   },
   {
-    connection: redis,
+    connection: bullRedis,
     concurrency: 5,
   }
 );

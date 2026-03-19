@@ -2,7 +2,7 @@
 
 ## Overview
 
-Full-stack web app that tracks any Solana wallet address in near real-time (read-only, no wallet connection). Transactions are polled every ~12 seconds, stored with deduplication, and pushed live to the browser via WebSocket.
+Full-stack web app that tracks any Solana wallet address in near real-time (read-only, no wallet connection). Transactions are polled every ~20 seconds, stored with deduplication, and pushed live to the browser via WebSocket.
 
 ## Stack
 
@@ -11,11 +11,11 @@ Full-stack web app that tracks any Solana wallet address in near real-time (read
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Queue**: BullMQ + Redis (wallet-tracker queue)
+- **Database**: MongoDB Atlas + Mongoose
+- **Polling**: In-memory setInterval (per-wallet, 20s interval)
 - **Realtime**: WebSockets (ws)
 - **Blockchain**: Solana web3.js (`getSignaturesForAddress`)
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
+- **Validation**: Zod (`zod/v4`)
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 - **Frontend**: React + Vite + Tailwind CSS
@@ -25,30 +25,28 @@ Full-stack web app that tracks any Solana wallet address in near real-time (read
 ```text
 artifacts-monorepo/
 ├── artifacts/
-│   ├── api-server/         # Express API server + BullMQ worker + WebSocket
+│   ├── api-server/         # Express API server + in-memory poller + WebSocket
 │   └── solana-tracker/     # React + Vite frontend dashboard
 ├── lib/
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── .env.example            # Example environment variables
-└── README.md               # Setup instructions
+│   └── db/                 # Mongoose models + MongoDB connection
 ```
 
 ## Key Files
 
 ### Backend (`artifacts/api-server/src/`)
-- `index.ts` — HTTP server with WebSocket + BullMQ worker startup
-- `lib/redis.ts` — ioredis connection
+- `index.ts` — Connects to MongoDB, starts HTTP server + WebSocket + poller
 - `lib/solana.ts` — Solana RPC helpers (getSignaturesForAddress)
-- `lib/queue.ts` — BullMQ queue setup, worker, polling logic
+- `lib/queue.ts` — In-memory setInterval poller per wallet
 - `lib/websocket.ts` — WebSocket server, subscription management, emit helpers
 - `routes/wallet.ts` — POST /wallet, GET /wallet/:address, GET /wallets
 
-### Database (`lib/db/src/schema/`)
-- `wallets.ts` — Wallets table (id, address unique, createdAt)
-- `transactions.ts` — Transactions table (id, signature unique, walletAddress, slot, blockTime, fee, status, raw jsonb, createdAt)
+### Database (`lib/db/src/`)
+- `models/wallet.ts` — Wallet Mongoose model (address unique, createdAt)
+- `models/transaction.ts` — Transaction Mongoose model (signature unique, walletAddress, slot, blockTime, fee, status, raw, createdAt)
+- `index.ts` — `connectDb()` function + model exports
 
 ### Frontend (`artifacts/solana-tracker/src/`)
 - `App.tsx` — Router with Layout wrapper
@@ -72,9 +70,8 @@ artifacts-monorepo/
 
 | Variable | Description |
 |---|---|
-| `SOLANA_RPC_URL` | Solana mainnet RPC URL |
-| `REDIS_URL` | Redis connection URL |
-| `DATABASE_URL` | PostgreSQL connection string |
+| `MONGODB_URI` | MongoDB Atlas connection string |
+| `SOLANA_RPC_URL` | Solana mainnet RPC URL (optional, defaults to mainnet-beta) |
 | `PORT` | API server port (auto-assigned) |
 
 ## TypeScript & Composite Projects
@@ -84,4 +81,3 @@ Every package extends `tsconfig.base.json` with `composite: true`. Root `tsconfi
 - **Always typecheck from the root**: `pnpm run typecheck`
 - **Libs only**: `pnpm run typecheck:libs`
 - **Codegen**: `pnpm --filter @workspace/api-spec run codegen`
-- **DB push**: `pnpm --filter @workspace/db run push`

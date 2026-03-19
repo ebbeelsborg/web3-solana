@@ -1,11 +1,19 @@
 import { Router, type IRouter } from "express";
+import { rateLimit } from "express-rate-limit";
 import { WalletModel, TransactionModel } from "@workspace/db";
 import { isValidSolanaAddress } from "../lib/solana.js";
 import { scheduleWalletPolling } from "../lib/queue.js";
 
 const router: IRouter = Router();
 
-router.post("/wallet", async (req, res): Promise<void> => {
+const walletCreateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post("/wallet", walletCreateLimiter, async (req, res): Promise<void> => {
   const { address } = req.body as { address?: string };
 
   if (!address || typeof address !== "string") {
@@ -35,7 +43,7 @@ router.post("/wallet", async (req, res): Promise<void> => {
 
   const wallet = await WalletModel.create({ address: trimmed });
 
-  scheduleWalletPolling(trimmed, true);
+  await scheduleWalletPolling(trimmed, true);
 
   res.status(201).json({
     id: wallet._id.toString(),
@@ -45,8 +53,15 @@ router.post("/wallet", async (req, res): Promise<void> => {
   });
 });
 
+const MAX_LIMIT = 100;
+
 router.get("/wallet/:address", async (req, res): Promise<void> => {
   const rawAddress = req.params.address;
+
+  if (!isValidSolanaAddress(rawAddress)) {
+    res.status(400).json({ error: "Invalid Solana wallet address" });
+    return;
+  }
 
   const wallet = await WalletModel.findOne({ address: rawAddress });
 
@@ -56,7 +71,8 @@ router.get("/wallet/:address", async (req, res): Promise<void> => {
   }
 
   const rawLimit = req.query.limit;
-  const limit = rawLimit ? parseInt(String(rawLimit), 10) : 50;
+  const parsed = rawLimit ? parseInt(String(rawLimit), 10) : 50;
+  const limit = Math.min(Math.max(1, Number.isNaN(parsed) ? 50 : parsed), MAX_LIMIT);
 
   const [transactions, txCount] = await Promise.all([
     TransactionModel.find({ walletAddress: rawAddress })

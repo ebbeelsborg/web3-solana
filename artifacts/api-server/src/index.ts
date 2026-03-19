@@ -1,7 +1,7 @@
 import http from "http";
 import app from "./app.js";
 import { setupWebSocket } from "./lib/websocket.js";
-import { scheduleAllWallets } from "./lib/queue.js";
+import { scheduleAllWallets, closeQueue } from "./lib/queue.js";
 import { connectDb } from "@workspace/db";
 
 const rawPort = process.env["PORT"];
@@ -33,3 +33,15 @@ connectDb()
     console.error("Failed to connect to MongoDB:", err.message);
     process.exit(1);
   });
+
+process.on("SIGTERM", async () => {
+  console.log("SIGTERM received, closing queue...");
+  await closeQueue();
+  process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+  console.log("SIGINT received, closing queue...");
+  await closeQueue();
+  process.exit(0);
+});

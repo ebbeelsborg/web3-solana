@@ -1,10 +1,19 @@
+import { Queue, Worker } from "bullmq";
 import { WalletModel, TransactionModel } from "@workspace/db";
 import { fetchRecentTransactions } from "./solana.js";
 import { emitTransactions } from "./websocket.js";
+import { redis } from "./redis.js";
 
+const QUEUE_NAME = "wallet-tracker";
 const POLL_INTERVAL_MS = 20000;
 
-const intervals = new Map<string, ReturnType<typeof setInterval>>();
+export const walletQueue = new Queue<{ address: string }>(QUEUE_NAME, {
+  connection: redis,
+  defaultJobOptions: {
+    removeOnComplete: { count: 1000 },
+    removeOnFail: { count: 5000 },
+  },
+});
 
 async function pollWallet(address: string): Promise<void> {
   console.log(`[Poller] Polling wallet: ${address}`);
@@ -65,32 +74,69 @@ async function pollWallet(address: string): Promise<void> {
     }
   } catch (err: any) {
     console.error(`[Poller] Error polling ${address}: ${err.message}`);
+    throw err;
   }
 }
 
-export function scheduleWalletPolling(
+export const walletWorker = new Worker<{ address: string }>(
+  QUEUE_NAME,
+  async (job) => {
+    await pollWallet(job.data.address);
+  },
+  {
+    connection: redis,
+    concurrency: 5,
+  }
+);
+
+walletWorker.on("failed", (job, err) => {
+  console.error(`[Poller] Job ${job?.id} failed:`, (err as Error).message);
+});
+
+walletWorker.on("error", (err) => {
+  console.error("[Poller] Worker error:", (err as Error).message);
+});
+
+function jobId(address: string): string {
+  return `wallet-${address}`;
+}
+
+export async function scheduleWalletPolling(
   address: string,
   triggerImmediately = false
-): void {
-  if (intervals.has(address)) {
+): Promise<void> {
+  const id = jobId(address);
+
+  const existing = await walletQueue.getRepeatableJobs();
+  if (existing.some((j) => j.id === id || j.key?.includes(id))) {
     console.log(`[Poller] Already polling ${address}`);
+    if (triggerImmediately) {
+      await walletQueue.add("poll", { address }, { jobId: `${id}-immediate` });
+    }
     return;
   }
 
-  const timer = setInterval(() => pollWallet(address), POLL_INTERVAL_MS);
-  intervals.set(address, timer);
+  await walletQueue.add(
+    "poll",
+    { address },
+    {
+      jobId: id,
+      repeat: { every: POLL_INTERVAL_MS },
+    }
+  );
   console.log(`[Poller] Scheduled polling for ${address}`);
 
   if (triggerImmediately) {
-    setTimeout(() => pollWallet(address), 1000);
+    await walletQueue.add("poll", { address }, { jobId: `${id}-immediate` });
   }
 }
 
-export function stopWalletPolling(address: string): void {
-  const timer = intervals.get(address);
-  if (timer) {
-    clearInterval(timer);
-    intervals.delete(address);
+export async function stopWalletPolling(address: string): Promise<void> {
+  const id = jobId(address);
+  const repeatableJobs = await walletQueue.getRepeatableJobs();
+  const job = repeatableJobs.find((j) => j.id === id || j.key?.includes(id));
+  if (job) {
+    await walletQueue.removeRepeatableByKey(job.key);
     console.log(`[Poller] Stopped polling for ${address}`);
   }
 }
@@ -98,7 +144,12 @@ export function stopWalletPolling(address: string): void {
 export async function scheduleAllWallets(): Promise<void> {
   const wallets = await WalletModel.find({}, { address: 1 }).lean();
   for (const wallet of wallets) {
-    scheduleWalletPolling(wallet.address, false);
+    await scheduleWalletPolling(wallet.address, false);
   }
   console.log(`[Poller] Scheduled ${wallets.length} wallets`);
+}
+
+export async function closeQueue(): Promise<void> {
+  await walletWorker.close();
+  await walletQueue.close();
 }

@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { IncomingMessage, Server } from "http";
 import { Transaction } from "@workspace/db";
+import { isValidSolanaAddress } from "./solana.js";
 
 interface SubscriptionMessage {
   type: "subscribe" | "unsubscribe";
@@ -28,7 +29,7 @@ export function setupWebSocket(server: Server): WebSocketServer {
     ws.on("message", (data) => {
       try {
         const msg = JSON.parse(data.toString()) as SubscriptionMessage;
-        if (msg.type === "subscribe" && msg.address) {
+        if (msg.type === "subscribe" && msg.address && isValidSolanaAddress(msg.address)) {
           ws.subscribedAddresses!.add(msg.address);
           console.log(`[WS] Client subscribed to ${msg.address}`);
         } else if (msg.type === "unsubscribe" && msg.address) {

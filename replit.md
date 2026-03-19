@@ -12,7 +12,7 @@ Full-stack web app that tracks any Solana wallet address in near real-time (read
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
 - **Database**: MongoDB Atlas + Mongoose
-- **Polling**: In-memory setInterval (per-wallet, 20s interval)
+- **Polling**: BullMQ queue (wallet-tracker, repeatable jobs every 20s, Redis-backed)
 - **Realtime**: WebSockets (ws)
 - **Blockchain**: Solana web3.js (`getSignaturesForAddress`)
 - **Validation**: Zod (`zod/v4`)
@@ -25,7 +25,7 @@ Full-stack web app that tracks any Solana wallet address in near real-time (read
 ```text
 artifacts-monorepo/
 ├── artifacts/
-│   ├── api-server/         # Express API server + in-memory poller + WebSocket
+│   ├── api-server/         # Express API server + BullMQ worker + WebSocket
 │   └── solana-tracker/     # React + Vite frontend dashboard
 ├── lib/
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
@@ -39,7 +39,7 @@ artifacts-monorepo/
 ### Backend (`artifacts/api-server/src/`)
 - `index.ts` — Connects to MongoDB, starts HTTP server + WebSocket + poller
 - `lib/solana.ts` — Solana RPC helpers (getSignaturesForAddress)
-- `lib/queue.ts` — In-memory setInterval poller per wallet
+- `lib/queue.ts` — BullMQ queue + worker (repeatable jobs per wallet)
 - `lib/websocket.ts` — WebSocket server, subscription management, emit helpers
 - `routes/wallet.ts` — POST /wallet, GET /wallet/:address, GET /wallets
 

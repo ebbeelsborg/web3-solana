@@ -3,6 +3,7 @@ import { WalletModel, TransactionModel } from "@workspace/db";
 import { fetchRecentTransactions } from "./solana.js";
 import { emitTransactions } from "./websocket.js";
 import { redis } from "./redis.js";
+import { invalidateWallet } from "./cache.js";
 
 const QUEUE_NAME = "wallet-tracker";
 const POLL_INTERVAL_MS = 20000;
@@ -71,6 +72,11 @@ async function pollWallet(address: string): Promise<void> {
           createdAt: d.createdAt,
         }))
       );
+      try {
+        await invalidateWallet(address);
+      } catch {
+        /* cache invalidation best-effort */
+      }
     }
   } catch (err: any) {
     console.error(`[Poller] Error polling ${address}: ${err.message}`);
@@ -143,10 +149,25 @@ export async function stopWalletPolling(address: string): Promise<void> {
 
 export async function scheduleAllWallets(): Promise<void> {
   const wallets = await WalletModel.find({}, { address: 1 }).lean();
-  for (const wallet of wallets) {
-    await scheduleWalletPolling(wallet.address, false);
-  }
-  console.log(`[Poller] Scheduled ${wallets.length} wallets`);
+  const existingJobs = await walletQueue.getRepeatableJobs();
+  const existingIds = new Set(
+    existingJobs
+      .map((j) => j.id)
+      .filter((id): id is string => typeof id === "string" && id.startsWith("wallet-"))
+  );
+
+  const toSchedule = wallets.filter((w) => !existingIds.has(jobId(w.address)));
+
+  await Promise.all(
+    toSchedule.map((w) =>
+      walletQueue.add("poll", { address: w.address }, {
+        jobId: jobId(w.address),
+        repeat: { every: POLL_INTERVAL_MS },
+      })
+    )
+  );
+
+  console.log(`[Poller] Scheduled ${toSchedule.length} wallets (${existingIds.size} already active)`);
 }
 
 export async function closeQueue(): Promise<void> {

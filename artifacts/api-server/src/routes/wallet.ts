@@ -3,6 +3,7 @@ import { rateLimit } from "express-rate-limit";
 import { WalletModel, TransactionModel } from "@workspace/db";
 import { isValidSolanaAddress } from "../lib/solana.js";
 import { scheduleWalletPolling } from "../lib/queue.js";
+import { getCached, setCached, invalidateWalletsList } from "../lib/cache.js";
 
 const router: IRouter = Router();
 
@@ -43,7 +44,10 @@ router.post("/wallet", walletCreateLimiter, async (req, res): Promise<void> => {
 
   const wallet = await WalletModel.create({ address: trimmed });
 
-  await scheduleWalletPolling(trimmed, true);
+  await Promise.all([
+    scheduleWalletPolling(trimmed, true),
+    invalidateWalletsList(),
+  ]);
 
   res.status(201).json({
     id: wallet._id.toString(),
@@ -63,16 +67,27 @@ router.get("/wallet/:address", async (req, res): Promise<void> => {
     return;
   }
 
+  const rawLimit = req.query.limit;
+  const parsed = rawLimit ? parseInt(String(rawLimit), 10) : 50;
+  const limit = Math.min(Math.max(1, Number.isNaN(parsed) ? 50 : parsed), MAX_LIMIT);
+
+  const cacheKey = `wallet:${rawAddress}:${limit}`;
+  try {
+    const cached = await getCached<Record<string, unknown>>(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+  } catch {
+    /* fall through to DB */
+  }
+
   const wallet = await WalletModel.findOne({ address: rawAddress });
 
   if (!wallet) {
     res.status(404).json({ error: "Wallet not found" });
     return;
   }
-
-  const rawLimit = req.query.limit;
-  const parsed = rawLimit ? parseInt(String(rawLimit), 10) : 50;
-  const limit = Math.min(Math.max(1, Number.isNaN(parsed) ? 50 : parsed), MAX_LIMIT);
 
   const [transactions, txCount] = await Promise.all([
     TransactionModel.find({ walletAddress: rawAddress })
@@ -82,7 +97,7 @@ router.get("/wallet/:address", async (req, res): Promise<void> => {
     TransactionModel.countDocuments({ walletAddress: rawAddress }),
   ]);
 
-  res.json({
+  const payload = {
     wallet: {
       id: wallet._id.toString(),
       address: wallet.address,
@@ -99,25 +114,61 @@ router.get("/wallet/:address", async (req, res): Promise<void> => {
       status: tx.status,
       createdAt: tx.createdAt,
     })),
-  });
+  };
+
+  try {
+    await setCached(cacheKey, payload);
+  } catch {
+    /* continue without cache */
+  }
+  res.json(payload);
 });
 
 router.get("/wallets", async (_req, res): Promise<void> => {
-  const wallets = await WalletModel.find().sort({ createdAt: -1 }).lean();
+  const cacheKey = "wallets:list";
+  try {
+    const cached = await getCached<unknown[]>(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+  } catch {
+    /* fall through to DB */
+  }
 
-  const withCounts = await Promise.all(
-    wallets.map(async (w) => {
-      const txCount = await TransactionModel.countDocuments({ walletAddress: w.address });
-      return {
-        id: w._id.toString(),
-        address: w.address,
-        createdAt: w.createdAt,
-        transactionCount: txCount,
-      };
-    })
-  );
+  const withCounts = await WalletModel.aggregate([
+    { $sort: { createdAt: -1 } },
+    {
+      $lookup: {
+        from: "transactions",
+        localField: "address",
+        foreignField: "walletAddress",
+        as: "txs",
+      },
+    },
+    {
+      $project: {
+        id: { $toString: "$_id" },
+        address: 1,
+        createdAt: 1,
+        transactionCount: { $size: "$txs" },
+      },
+    },
+  ]);
 
-  res.json(withCounts);
+  const payload = withCounts.map((w) => ({
+    id: w.id,
+    address: w.address,
+    createdAt: w.createdAt,
+    transactionCount: w.transactionCount,
+  }));
+
+  try {
+    await setCached(cacheKey, payload);
+  } catch {
+    /* continue without cache */
+  }
+  res.json(payload);
 });
 
 export default router;

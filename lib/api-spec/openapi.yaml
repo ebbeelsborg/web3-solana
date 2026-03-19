@@ -1,15 +1,18 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Solana Wallet Tracker API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: wallets
+    description: Wallet tracking operations
+  - name: transactions
+    description: Transaction operations
 paths:
   /healthz:
     get:
@@ -24,6 +27,80 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /wallet:
+    post:
+      operationId: addWallet
+      tags: [wallets]
+      summary: Add a wallet to track
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddWalletBody"
+      responses:
+        "201":
+          description: Wallet added successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wallet"
+        "400":
+          description: Invalid wallet address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Wallet already tracked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wallet"
+  /wallet/{address}:
+    get:
+      operationId: getWalletTransactions
+      tags: [wallets]
+      summary: Get transactions for a wallet
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Wallet transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletTransactionsResponse"
+        "404":
+          description: Wallet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /wallets:
+    get:
+      operationId: listWallets
+      tags: [wallets]
+      summary: List all tracked wallets
+      responses:
+        "200":
+          description: List of tracked wallets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Wallet"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +110,75 @@ components:
           type: string
       required:
         - status
-
+    AddWalletBody:
+      type: object
+      properties:
+        address:
+          type: string
+          description: Solana wallet address (base58 encoded)
+      required:
+        - address
+    Wallet:
+      type: object
+      properties:
+        id:
+          type: integer
+        address:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        transactionCount:
+          type: ["integer", "null"]
+      required:
+        - id
+        - address
+        - createdAt
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: integer
+        signature:
+          type: string
+        walletAddress:
+          type: string
+        slot:
+          type: ["integer", "null"]
+        blockTime:
+          type: ["integer", "null"]
+        fee:
+          type: ["integer", "null"]
+        status:
+          type: string
+        raw:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - signature
+        - walletAddress
+        - status
+        - createdAt
+    WalletTransactionsResponse:
+      type: object
+      properties:
+        wallet:
+          $ref: "#/components/schemas/Wallet"
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+      required:
+        - wallet
+        - transactions
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

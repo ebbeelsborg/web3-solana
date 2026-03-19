@@ -1,0 +1,101 @@
+Build a full-stack web app that tracks any Solana wallet address in near real-time (read-only, no wallet connection).
+
+Tech stack:
+
+Backend: Node.js + TypeScript + Express
+
+Queue: BullMQ with Redis
+
+Database: MongoDB (with Mongoose)
+
+Realtime: WebSockets (use ws)
+
+Frontend: React with a modern, clean, visually appealing UI (use a component library like Tailwind or similar)
+
+Core functionality:
+
+User enters a Solana wallet address
+
+Backend stores the wallet
+
+A background worker polls Solana RPC (getSignaturesForAddress) every ~10–15 seconds
+
+New transactions are stored in MongoDB (deduplicate by signature)
+
+When new transactions are found, emit them via WebSocket to subscribed clients
+
+Frontend subscribes and updates a live transaction feed
+
+Backend requirements:
+
+Create endpoints:
+
+POST /wallet (add wallet)
+
+GET /wallet/:address (get transactions)
+
+GET /health
+
+Use a BullMQ queue called wallet-tracker
+
+Worker processes jobs per wallet and repeats
+
+Use Redis for queue + lightweight caching
+
+Add proper error handling and retries
+
+Use environment variables for RPC, Mongo, Redis
+
+Data models:
+
+Wallet: address (unique), createdAt
+
+Transaction: signature (unique), walletAddress, slot, timestamp, raw
+
+Solana integration:
+
+Use mainnet RPC (env: SOLANA_RPC_URL)
+
+Call getSignaturesForAddress
+
+Optionally enrich with getTransaction
+
+Frontend:
+
+Input field for wallet address
+
+“Track” button
+
+Display list of transactions
+
+Connect to WebSocket and subscribe to wallet updates
+
+Append new transactions live
+
+UX requirements:
+
+UI must be modern, clean, and visually engaging (dashboard-style)
+
+Include a brief, visible user guide in the app explaining:
+
+what the app does
+
+how to find a Solana wallet address (e.g. via explorers)
+
+how to start tracking
+
+Show loading states and empty states clearly
+
+Make it feel like a real product, not a demo
+
+Other requirements:
+
+Ensure no duplicate transactions
+
+Keep code modular (routes, services, workers)
+
+Add basic README with setup steps
+
+Include example .env
+
+Keep the UI minimal in complexity but high quality in design, and focus on backend correctness, reliability, and clean architecture.

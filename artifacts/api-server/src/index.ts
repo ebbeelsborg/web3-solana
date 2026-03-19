@@ -1,4 +1,7 @@
-import app from "./app";
+import http from "http";
+import app from "./app.js";
+import { setupWebSocket } from "./lib/websocket.js";
+import { startWorker, scheduleAllWallets } from "./lib/queue.js";
 
 const rawPort = process.env["PORT"];
 
@@ -14,6 +17,14 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, () => {
+const server = http.createServer(app);
+
+setupWebSocket(server);
+startWorker();
+
+server.listen(port, async () => {
   console.log(`Server listening on port ${port}`);
+  await scheduleAllWallets().catch((err) => {
+    console.error("Failed to reschedule wallets:", err.message);
+  });
 });

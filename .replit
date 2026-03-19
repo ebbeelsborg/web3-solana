@@ -24,3 +24,9 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com"
+REDIS_URL = "redis://localhost:6379"

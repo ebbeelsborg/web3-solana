@@ -1,0 +1,14 @@
+packages:
+  "framer-motion": "For smooth, animated transaction feed entry and page transitions"
+  "date-fns": "For human-readable timestamp formatting"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility to merge tailwind classes without style conflicts"
+
+images:
+  - path: "artifacts/solana-tracker/public/images/crypto-bg.png"
+    description: "Dark, abstract blockchain technology background with glowing purple and cyan data lines, minimal and premium"
+    aspect_ratio: "16:9"
+
+notes:
+  - "Assuming Orval generated hooks are correctly exported from @workspace/api-client-react"
+  - "WebSocket server runs on the same host at /ws, uses JSON messages with { type: 'subscribe', address: '...' }"

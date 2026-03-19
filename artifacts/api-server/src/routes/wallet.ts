@@ -43,29 +43,7 @@ router.post("/wallet", async (req, res): Promise<void> => {
     .values({ address: trimmed })
     .returning();
 
-  await scheduleWalletPolling(trimmed);
-
-  try {
-    const transactions = await fetchRecentTransactions(trimmed, 20);
-    if (transactions.length > 0) {
-      await db
-        .insert(transactionsTable)
-        .values(
-          transactions.map((tx) => ({
-            signature: tx.signature,
-            walletAddress: trimmed,
-            slot: tx.slot,
-            blockTime: tx.blockTime,
-            fee: tx.fee,
-            status: tx.status,
-            raw: tx.raw as Record<string, unknown>,
-          }))
-        )
-        .onConflictDoNothing();
-    }
-  } catch (err) {
-    console.error("[Route] Failed to fetch initial transactions:", (err as Error).message);
-  }
+  await scheduleWalletPolling(trimmed, true);
 
   res.status(201).json({ ...wallet, transactionCount: 0 });
 });

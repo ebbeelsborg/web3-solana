@@ -27,6 +27,13 @@ export default function Dashboard() {
           setLocation(`/wallet/${data.address}`);
         },
         onError: (error: any) => {
+          const status = error?.status;
+          const walletAddress = error?.data?.address;
+          if (status === 409 && walletAddress) {
+            queryClient.invalidateQueries({ queryKey: getListWalletsQueryKey() });
+            setLocation(`/wallet/${walletAddress}`);
+            return;
+          }
           toast({
             variant: "destructive",
             title: "Invalid Address",

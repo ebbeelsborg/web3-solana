@@ -4,6 +4,9 @@ const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.co
 
 export const solanaConnection = new Connection(rpcUrl, {
   commitment: "confirmed",
+  httpHeaders: { "Content-Type": "application/json" },
+  disableRetryOnRateLimit: false,
+  confirmTransactionInitialTimeout: 15000,
 });
 
 export function isValidSolanaAddress(address: string): boolean {

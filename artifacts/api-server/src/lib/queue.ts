@@ -2,11 +2,11 @@ import { Queue, Worker, Job } from "bullmq";
 import { redis } from "./redis.js";
 import { db, walletsTable, transactionsTable } from "@workspace/db";
 import { fetchRecentTransactions } from "./solana.js";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { emitTransactions } from "./websocket.js";
 
 const QUEUE_NAME = "wallet-tracker";
-const POLL_INTERVAL_MS = 12000;
+const POLL_INTERVAL_MS = 20000;
 
 export const walletQueue = new Queue(QUEUE_NAME, {
   connection: redis,
@@ -16,7 +16,10 @@ export const walletQueue = new Queue(QUEUE_NAME, {
   },
 });
 
-export async function scheduleWalletPolling(address: string): Promise<void> {
+export async function scheduleWalletPolling(
+  address: string,
+  triggerImmediately = false
+): Promise<void> {
   const existingJobs = await walletQueue.getRepeatableJobs();
   const alreadyScheduled = existingJobs.some((j) => j.key.includes(address));
   if (alreadyScheduled) {
@@ -29,16 +32,30 @@ export async function scheduleWalletPolling(address: string): Promise<void> {
     { address },
     {
       repeat: { every: POLL_INTERVAL_MS },
-      jobId: `poll-${address}`,
     }
   );
+
+  if (triggerImmediately) {
+    await walletQueue.add("poll-wallet", { address }, { delay: 1000 });
+  }
+
   console.log(`[Queue] Scheduled polling for ${address}`);
 }
 
 export async function scheduleAllWallets(): Promise<void> {
+  await walletQueue.drain();
+
+  const repeatableJobs = await walletQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    await walletQueue.removeRepeatableByKey(job.key);
+  }
+  if (repeatableJobs.length > 0) {
+    console.log(`[Queue] Cleared ${repeatableJobs.length} stale repeating jobs`);
+  }
+
   const wallets = await db.select().from(walletsTable);
   for (const wallet of wallets) {
-    await scheduleWalletPolling(wallet.address);
+    await scheduleWalletPolling(wallet.address, false);
   }
   console.log(`[Queue] Rescheduled ${wallets.length} wallets`);
 }
@@ -50,18 +67,21 @@ export function startWorker(): Worker {
       const { address } = job.data as { address: string };
       console.log(`[Worker] Polling wallet: ${address}`);
 
-      const existing = await db
-        .select()
-        .from(transactionsTable)
-        .where(eq(transactionsTable.walletAddress, address))
-        .orderBy(desc(transactionsTable.slot))
-        .limit(1);
-
       const transactions = await fetchRecentTransactions(address, 20);
 
-      const newTxns = transactions.filter(
-        (tx) => !existing.some((e) => e.signature === tx.signature)
-      );
+      if (transactions.length === 0) {
+        console.log(`[Worker] No transactions found for ${address}`);
+        return;
+      }
+
+      const fetchedSignatures = transactions.map((tx) => tx.signature);
+      const existingRows = await db
+        .select({ signature: transactionsTable.signature })
+        .from(transactionsTable)
+        .where(inArray(transactionsTable.signature, fetchedSignatures));
+
+      const existingSet = new Set(existingRows.map((r) => r.signature));
+      const newTxns = transactions.filter((tx) => !existingSet.has(tx.signature));
 
       if (newTxns.length === 0) {
         console.log(`[Worker] No new transactions for ${address}`);

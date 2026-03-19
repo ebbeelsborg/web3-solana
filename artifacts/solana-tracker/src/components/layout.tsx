@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useListWallets, useAddWallet, getListWalletsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Wallet, Search, Plus, Activity, BookOpen, Hexagon, Loader2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Wallet as WalletIcon, Search, Plus, Activity, BookOpen, Hexagon, Loader2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,14 @@ export function Layout({ children }: { children: ReactNode }) {
           setLocation(`/wallet/${data.address}`);
         },
         onError: (error: any) => {
+          const status = error?.status;
+          const walletAddress = error?.data?.address;
+          if (status === 409 && walletAddress) {
+            setNewWallet("");
+            queryClient.invalidateQueries({ queryKey: getListWalletsQueryKey() });
+            setLocation(`/wallet/${walletAddress}`);
+            return;
+          }
           toast({
             variant: "destructive",
             title: "Failed to track wallet",

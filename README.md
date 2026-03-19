@@ -30,15 +30,20 @@ What makes this Web3:
 
 ## Architecture
 
+### Flow
+
+> User adds wallet → API saves to MongoDB and enqueues a repeatable BullMQ job → Worker polls Solana, inserts new txs, emits over WebSocket → UI updates live.
+
+### Components
+
 | Component | Purpose |
 |-----------|---------|
-| **Frontend** (React + Vite) | Dashboard to add wallets, live transaction feed per wallet. React Query for REST; WebSocket hook merges incoming txs into the cache without refresh. |
-| **Backend** (Express) | REST endpoints to register wallets, fetch wallet + transactions, list all tracked wallets. WebSocket server at `/ws` for live push. |
-| **Job queue** (BullMQ, Redis) | Async background jobs per wallet (every 20s). Polls Solana RPC, deduplicates against DB, inserts new txs, broadcasts via WebSocket. Redis-backed so jobs survive restarts. |
-| **Database** (MongoDB) | Stores wallets and transactions. Cache and deduplication — the blockchain is the source of truth. |
-| **Blockchain** (Solana RPC) | Canonical source. We only read; we never sign or submit. |
-
-Flow: User adds wallet → API saves to MongoDB and enqueues a repeatable BullMQ job → Worker polls Solana, inserts new txs, emits over WebSocket → UI updates live.
+| [**Frontend**](docs/frontend.md) (React + Vite) | Dashboard to add wallets, live transaction feed per wallet. React Query for REST; WebSocket hook merges incoming txs into the cache without refresh. |
+| [**API**](docs/api.md) (Express) | REST endpoints to register wallets, fetch wallet + transactions, list all tracked wallets. WebSocket server at `/ws` for live push. |
+| [**Job queue**](docs/job-queue.md) (BullMQ, Redis) | Async background jobs per wallet (every 20s). Polls Solana RPC, deduplicates against DB, inserts new txs, broadcasts via WebSocket. Redis-backed so jobs survive restarts. |
+| [**Database**](docs/database.md) (MongoDB) | Stores wallets and transactions. Cache and deduplication — the blockchain is the source of truth. |
+| [**Blockchain**](docs/blockchain.md) (Solana RPC) | Canonical source. We only read; we never sign or submit. |
+| [**SPL Token Program**](docs/smart-contracts.md) | Smart contract that manages token accounts. We read token balances via `getParsedTokenAccountsByOwner`. |
 
 **Project structure**
 
@@ -49,6 +54,7 @@ Flow: User adds wallet → API saves to MongoDB and enqueues a repeatable BullMQ
 | Job queue | `artifacts/api-server/src/lib/queue.ts`, `redis.ts` |
 | Database | `lib/db/` (models, connection) |
 | Blockchain client | `artifacts/api-server/src/lib/solana.ts` |
+| Token balances (SPL Program) | `fetchAddressBalances` in solana.ts, GET /wallet/:address/balances |
 
 Shared: `lib/api-spec/`, `lib/api-client-react/`, `lib/api-zod/` (OpenAPI codegen).
 
@@ -61,6 +67,7 @@ Shared: `lib/api-spec/`, `lib/api-client-react/`, `lib/api-zod/` (OpenAPI codege
 - **Job queue:** BullMQ, Redis (async background jobs)
 - **Database:** MongoDB
 - **Blockchain:** `@solana/web3.js`
+- **Smart contract:** SPL Token Program (read-only token balances)
 - **Monorepo:** pnpm workspaces
 
 ---

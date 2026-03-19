@@ -1,5 +1,5 @@
 import { useRoute } from "wouter";
-import { useGetWalletTransactions } from "@workspace/api-client-react";
+import { useGetWalletTransactions, useGetWalletBalances } from "@workspace/api-client-react";
 import { useSolanaWebSocket } from "@/hooks/use-solana-ws";
 import { Copy, ExternalLink, Activity, Loader2, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,11 @@ export default function WalletView() {
     address || "", 
     { limit: 50 },
     { query: { enabled: !!address, refetchOnWindowFocus: false } }
+  );
+
+  const { data: balances, isLoading: balancesLoading } = useGetWalletBalances(
+    address || "",
+    { query: { enabled: !!address } }
   );
 
   const { status: wsStatus } = useSolanaWebSocket(address);
@@ -115,6 +120,46 @@ export default function WalletView() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Token Balances (from SPL Token Program) */}
+        <div className="relative z-10 mt-6 pt-6 border-t border-white/5">
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+            Balances (SPL Token Program)
+          </h3>
+          {balancesLoading ? (
+            <div className="flex gap-3">
+              <div className="h-12 w-24 bg-white/5 rounded-lg animate-pulse" />
+              <div className="h-12 w-32 bg-white/5 rounded-lg animate-pulse" />
+            </div>
+          ) : balances ? (
+            <div className="flex flex-wrap gap-3">
+              <div className="bg-primary/10 border border-primary/20 rounded-lg px-4 py-2">
+                <span className="text-xs text-muted-foreground">SOL</span>
+                <div className="font-mono font-semibold text-primary">
+                  {balances.sol.toFixed(4)}
+                </div>
+              </div>
+              {balances.tokens.slice(0, 8).map((t) => (
+                <div
+                  key={t.mint}
+                  className="bg-white/5 border border-white/10 rounded-lg px-4 py-2"
+                >
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {truncateMiddle(t.mint, 4)}
+                  </span>
+                  <div className="font-mono font-medium">
+                    {t.uiAmountString ?? t.amount}
+                  </div>
+                </div>
+              ))}
+              {balances.tokens.length > 8 && (
+                <div className="text-xs text-muted-foreground self-center">
+                  +{balances.tokens.length - 8} more
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
 

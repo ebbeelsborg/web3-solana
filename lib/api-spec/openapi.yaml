@@ -87,6 +87,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /wallet/{address}/balances:
+    get:
+      operationId: getWalletBalances
+      tags: [wallets]
+      summary: Get SOL and SPL token balances (reads from Token Program)
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: SOL and SPL token balances
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressBalances"
+        "400":
+          description: Invalid address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: RPC error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /wallets:
     get:
       operationId: listWallets
@@ -182,3 +212,31 @@ components:
           type: string
       required:
         - error
+    TokenBalance:
+      type: object
+      properties:
+        mint:
+          type: string
+        decimals:
+          type: integer
+        amount:
+          type: string
+        uiAmountString:
+          type: ["string", "null"]
+      required:
+        - mint
+        - decimals
+        - amount
+    AddressBalances:
+      type: object
+      properties:
+        sol:
+          type: number
+          description: SOL balance in lamports / 1e9
+        tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/TokenBalance"
+      required:
+        - sol
+        - tokens

@@ -5,6 +5,7 @@ import { isValidSolanaAddress } from "../lib/solana.js";
 import { scheduleWalletPolling } from "../lib/queue.js";
 import { getCached, setCached, invalidateWalletsList } from "../lib/cache.js";
 import { parseLimit } from "../lib/parse-limit.js";
+import { fetchAddressBalances } from "../lib/solana.js";
 
 const router: IRouter = Router();
 
@@ -121,6 +122,25 @@ router.get("/wallet/:address", async (req, res): Promise<void> => {
     /* continue without cache */
   }
   res.json(payload);
+});
+
+router.get("/wallet/:address/balances", async (req, res): Promise<void> => {
+  const rawAddress = req.params.address;
+
+  if (!isValidSolanaAddress(rawAddress)) {
+    res.status(400).json({ error: "Invalid Solana wallet address" });
+    return;
+  }
+
+  try {
+    const balances = await fetchAddressBalances(rawAddress);
+    res.json(balances);
+  } catch (err: unknown) {
+    console.error("[API] Failed to fetch balances:", err);
+    res.status(502).json({
+      error: "Failed to fetch token balances from Solana",
+    });
+  }
 });
 
 router.get("/wallets", async (_req, res): Promise<void> => {

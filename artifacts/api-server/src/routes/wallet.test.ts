@@ -25,6 +25,13 @@ vi.mock("../lib/cache.js", () => ({
   invalidateWalletsList: vi.fn().mockResolvedValue(undefined),
 }));
 
+describe("GET /api/healthz", () => {
+  it("returns 200 with status ok", async () => {
+    const res = await request(app).get("/api/healthz").expect(200);
+    expect(res.body).toEqual({ status: "ok" });
+  });
+});
+
 describe("GET /api/wallet/:address", () => {
   it("returns 400 for invalid Solana address", async () => {
     const res = await request(app)
@@ -39,6 +46,15 @@ describe("GET /api/wallet/:address", () => {
       .get("/api/wallet/notabase58!!!")
       .expect(400);
     expect(res.body.error).toContain("Invalid");
+  });
+});
+
+describe("GET /api/wallet/:address/balances", () => {
+  it("returns 400 for invalid Solana address", async () => {
+    const res = await request(app)
+      .get("/api/wallet/bad/balances")
+      .expect(400);
+    expect(res.body).toEqual({ error: "Invalid Solana wallet address" });
   });
 });
 

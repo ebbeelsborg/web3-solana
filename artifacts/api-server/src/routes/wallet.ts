@@ -4,6 +4,7 @@ import { WalletModel, TransactionModel } from "@workspace/db";
 import { isValidSolanaAddress } from "../lib/solana.js";
 import { scheduleWalletPolling } from "../lib/queue.js";
 import { getCached, setCached, invalidateWalletsList } from "../lib/cache.js";
+import { parseLimit } from "../lib/parse-limit.js";
 
 const router: IRouter = Router();
 
@@ -67,9 +68,7 @@ router.get("/wallet/:address", async (req, res): Promise<void> => {
     return;
   }
 
-  const rawLimit = req.query.limit;
-  const parsed = rawLimit ? parseInt(String(rawLimit), 10) : 50;
-  const limit = Math.min(Math.max(1, Number.isNaN(parsed) ? 50 : parsed), MAX_LIMIT);
+  const limit = parseLimit(req.query.limit, 50, MAX_LIMIT);
 
   const cacheKey = `wallet:${rawAddress}:${limit}`;
   try {

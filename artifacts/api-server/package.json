@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "NODE_ENV=development tsx ./src/index.ts",
     "build": "tsx ./build.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.4",
@@ -22,6 +24,8 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "supertest": "^7",
+    "vitest": "^2",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

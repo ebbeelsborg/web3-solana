@@ -30,7 +30,7 @@ timeoutMs = 20000
 [userenv.shared]
 SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com"
 REDIS_URL = "redis://localhost:6379"
-MONGODB_URI = "mongodb+srv://ebbeelsborg_db_user:XEm5KiTRVci9ttq2@cluster-web3-solana.azrdamz.mongodb.net/?appName=Cluster-Web3-Solana"
+MONGODB_URI = "mongodb+srv://<user>:<password>@<host>/?appName=<app>"
 
 [nix]
 channel = "stable-25_05"

@@ -5,6 +5,8 @@ import router from "./routes";
 
 const app: Express = express();
 
+app.set("trust proxy", 1);
+
 const corsOrigin = process.env.CORS_ORIGIN;
 app.use(
   cors({

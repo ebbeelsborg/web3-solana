@@ -37,7 +37,7 @@ jobs:
         run: pnpm run typecheck
 
       - name: Prettier (format check)
-        run: pnpm exec prettier --check . --ignore-path .gitignore
+        run: pnpm exec prettier --check . --ignore-path .gitignore --ignore-path .prettierignore
 
       - name: Test (api-server)
         run: pnpm --filter @workspace/api-server run test

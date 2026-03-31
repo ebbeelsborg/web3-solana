@@ -1,0 +1,2 @@
+# pnpm owns lockfile formatting; formatting here causes huge churn and CI drift
+pnpm-lock.yaml

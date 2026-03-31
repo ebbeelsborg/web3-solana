@@ -34,7 +34,9 @@ router.post("/wallet", walletCreateLimiter, async (req, res): Promise<void> => {
   const existing = await WalletModel.findOne({ address: trimmed });
 
   if (existing) {
-    const txCount = await TransactionModel.countDocuments({ walletAddress: trimmed });
+    const txCount = await TransactionModel.countDocuments({
+      walletAddress: trimmed,
+    });
     res.status(409).json({
       id: existing._id.toString(),
       address: existing.address,

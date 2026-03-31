@@ -28,6 +28,15 @@ import type {
 import { customFetch } from "../custom-fetch";
 import type { ErrorType, BodyType } from "../custom-fetch";
 
+/** Orval merges `query` into defaults; `queryKey` / `queryFn` stay optional overrides. */
+type QueryOptionsPatch<TQueryFnData, TError, TData = TQueryFnData> = Omit<
+  UseQueryOptions<TQueryFnData, TError, TData>,
+  "queryKey" | "queryFn"
+> & {
+  queryKey?: QueryKey;
+  queryFn?: UseQueryOptions<TQueryFnData, TError, TData>["queryFn"];
+};
+
 type AwaitedInput<T> = PromiseLike<T> | T;
 
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
@@ -59,7 +68,7 @@ export const getHealthCheckQueryOptions = <
   TData = Awaited<ReturnType<typeof healthCheck>>,
   TError = ErrorType<unknown>,
 >(options?: {
-  query?: UseQueryOptions<
+  query?: QueryOptionsPatch<
     Awaited<ReturnType<typeof healthCheck>>,
     TError,
     TData
@@ -94,7 +103,7 @@ export function useHealthCheck<
   TData = Awaited<ReturnType<typeof healthCheck>>,
   TError = ErrorType<unknown>,
 >(options?: {
-  query?: UseQueryOptions<
+  query?: QueryOptionsPatch<
     Awaited<ReturnType<typeof healthCheck>>,
     TError,
     TData
@@ -246,7 +255,7 @@ export const getGetWalletTransactionsQueryOptions = <
   address: string,
   params?: GetWalletTransactionsParams,
   options?: {
-    query?: UseQueryOptions<
+    query?: QueryOptionsPatch<
       Awaited<ReturnType<typeof getWalletTransactions>>,
       TError,
       TData
@@ -292,7 +301,7 @@ export function useGetWalletTransactions<
   address: string,
   params?: GetWalletTransactionsParams,
   options?: {
-    query?: UseQueryOptions<
+    query?: QueryOptionsPatch<
       Awaited<ReturnType<typeof getWalletTransactions>>,
       TError,
       TData
@@ -335,7 +344,7 @@ export const getListWalletsQueryOptions = <
   TData = Awaited<ReturnType<typeof listWallets>>,
   TError = ErrorType<unknown>,
 >(options?: {
-  query?: UseQueryOptions<
+  query?: QueryOptionsPatch<
     Awaited<ReturnType<typeof listWallets>>,
     TError,
     TData
@@ -370,7 +379,7 @@ export function useListWallets<
   TData = Awaited<ReturnType<typeof listWallets>>,
   TError = ErrorType<unknown>,
 >(options?: {
-  query?: UseQueryOptions<
+  query?: QueryOptionsPatch<
     Awaited<ReturnType<typeof listWallets>>,
     TError,
     TData

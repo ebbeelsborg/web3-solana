@@ -36,15 +36,15 @@ function App() {
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <div className="min-h-screen bg-background text-foreground relative selection:bg-primary/30">
             {/* Global Decorative Background */}
-            <img 
-              src={`${import.meta.env.BASE_URL}images/crypto-bg.png`} 
-              alt="" 
-              className="fixed inset-0 w-full h-full object-cover opacity-[0.04] pointer-events-none mix-blend-screen" 
+            <img
+              src={`${import.meta.env.BASE_URL}images/crypto-bg.png`}
+              alt=""
+              className="fixed inset-0 w-full h-full object-cover opacity-[0.04] pointer-events-none mix-blend-screen"
             />
-            
+
             {/* Top glowing ambient light */}
             <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/10 blur-[120px] rounded-full pointer-events-none opacity-50" />
-            
+
             <Layout>
               <Router />
             </Layout>

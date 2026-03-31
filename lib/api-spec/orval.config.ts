@@ -22,6 +22,9 @@ export default defineConfig({
       },
     },
     output: {
+      // If you regenerate and `pnpm run typecheck` fails on `query?: UseQueryOptions` (missing
+      // `queryKey`), reintroduce the `QueryOptionsPatch` helper in `generated/api.ts` as in the
+      // current tree, or adjust orval once it emits TanStack Query v5–compatible option types.
       workspace: apiClientReactSrc,
       target: "generated",
       client: "react-query",
@@ -58,8 +61,8 @@ export default defineConfig({
       override: {
         zod: {
           coerce: {
-            query: ['boolean', 'number', 'string'],
-            param: ['boolean', 'number', 'string'],
+            query: ["boolean", "number", "string"],
+            param: ["boolean", "number", "string"],
           },
         },
         useDates: true,

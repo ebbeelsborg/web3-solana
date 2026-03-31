@@ -15,12 +15,15 @@ export interface AddressBalances {
 
 export const getWalletBalances = async (
   address: string,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<AddressBalances> => {
-  return customFetch<AddressBalances>(`/api/wallet/${encodeURIComponent(address)}/balances`, {
-    ...options,
-    method: "GET",
-  });
+  return customFetch<AddressBalances>(
+    `/api/wallet/${encodeURIComponent(address)}/balances`,
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getWalletBalancesQueryKey = (address: string) =>
@@ -30,7 +33,7 @@ export function useGetWalletBalances(
   address: string,
   options?: {
     query?: { enabled?: boolean };
-  }
+  },
 ) {
   return useQuery({
     queryKey: getWalletBalancesQueryKey(address),

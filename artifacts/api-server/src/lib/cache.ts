@@ -15,7 +15,7 @@ export async function getCached<T>(key: string): Promise<T | null> {
 export async function setCached<T>(
   key: string,
   value: T,
-  ttlSeconds = DEFAULT_TTL_SECONDS
+  ttlSeconds = DEFAULT_TTL_SECONDS,
 ): Promise<void> {
   await redis.setex(key, ttlSeconds, JSON.stringify(value));
 }

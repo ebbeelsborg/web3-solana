@@ -1,4 +1,4 @@
-import { Queue, Worker } from "bullmq";
+import { Queue, Worker, type ConnectionOptions } from "bullmq";
 import { WalletModel, TransactionModel } from "@workspace/db";
 import { fetchRecentTransactions } from "./solana.js";
 import { emitTransactions } from "./websocket.js";
@@ -8,13 +8,21 @@ import { invalidateWallet } from "./cache.js";
 const QUEUE_NAME = "wallet-tracker";
 const POLL_INTERVAL_MS = 20000;
 
-export const walletQueue = new Queue<{ address: string }>(QUEUE_NAME, {
-  connection: bullRedis,
-  defaultJobOptions: {
-    removeOnComplete: { count: 1000 },
-    removeOnFail: { count: 5000 },
+type WalletJobData = { address: string };
+type WalletJobName = "poll";
+
+const bullConnection = bullRedis as ConnectionOptions;
+
+export const walletQueue = new Queue<WalletJobData, unknown, WalletJobName>(
+  QUEUE_NAME,
+  {
+    connection: bullConnection,
+    defaultJobOptions: {
+      removeOnComplete: { count: 1000 },
+      removeOnFail: { count: 5000 },
+    },
   },
-});
+);
 
 async function pollWallet(address: string): Promise<void> {
   console.log(`[Poller] Polling wallet: ${address}`);
@@ -29,7 +37,7 @@ async function pollWallet(address: string): Promise<void> {
     const fetchedSignatures = transactions.map((tx) => tx.signature);
     const existingDocs = await TransactionModel.find(
       { signature: { $in: fetchedSignatures } },
-      { signature: 1 }
+      { signature: 1 },
     ).lean();
     const existingSet = new Set(existingDocs.map((d) => d.signature));
     const newTxns = transactions.filter((tx) => !existingSet.has(tx.signature));
@@ -39,7 +47,9 @@ async function pollWallet(address: string): Promise<void> {
       return;
     }
 
-    console.log(`[Poller] Found ${newTxns.length} new transactions for ${address}`);
+    console.log(
+      `[Poller] Found ${newTxns.length} new transactions for ${address}`,
+    );
 
     const docs = newTxns.map((tx) => ({
       signature: tx.signature,
@@ -51,7 +61,9 @@ async function pollWallet(address: string): Promise<void> {
       raw: tx.raw as Record<string, unknown>,
     }));
 
-    const inserted = await TransactionModel.insertMany(docs, { ordered: false }).catch((err) => {
+    const inserted = await TransactionModel.insertMany(docs, {
+      ordered: false,
+    }).catch((err) => {
       if (err.code === 11000) {
         return err.insertedDocs ?? [];
       }
@@ -70,7 +82,7 @@ async function pollWallet(address: string): Promise<void> {
           fee: d.fee,
           status: d.status,
           createdAt: d.createdAt,
-        }))
+        })),
       );
       try {
         await invalidateWallet(address);
@@ -84,15 +96,15 @@ async function pollWallet(address: string): Promise<void> {
   }
 }
 
-export const walletWorker = new Worker<{ address: string }>(
+export const walletWorker = new Worker<WalletJobData, unknown, WalletJobName>(
   QUEUE_NAME,
   async (job) => {
     await pollWallet(job.data.address);
   },
   {
-    connection: bullRedis,
+    connection: bullConnection,
     concurrency: 5,
-  }
+  },
 );
 
 walletWorker.on("failed", (job, err) => {
@@ -109,7 +121,7 @@ function jobId(address: string): string {
 
 export async function scheduleWalletPolling(
   address: string,
-  triggerImmediately = false
+  triggerImmediately = false,
 ): Promise<void> {
   const id = jobId(address);
 
@@ -128,7 +140,7 @@ export async function scheduleWalletPolling(
     {
       jobId: id,
       repeat: { every: POLL_INTERVAL_MS },
-    }
+    },
   );
   console.log(`[Poller] Scheduled polling for ${address}`);
 
@@ -153,21 +165,30 @@ export async function scheduleAllWallets(): Promise<void> {
   const existingIds = new Set(
     existingJobs
       .map((j) => j.id)
-      .filter((id): id is string => typeof id === "string" && id.startsWith("wallet-"))
+      .filter(
+        (id): id is string =>
+          typeof id === "string" && id.startsWith("wallet-"),
+      ),
   );
 
   const toSchedule = wallets.filter((w) => !existingIds.has(jobId(w.address)));
 
   await Promise.all(
     toSchedule.map((w) =>
-      walletQueue.add("poll", { address: w.address }, {
-        jobId: jobId(w.address),
-        repeat: { every: POLL_INTERVAL_MS },
-      })
-    )
+      walletQueue.add(
+        "poll",
+        { address: w.address },
+        {
+          jobId: jobId(w.address),
+          repeat: { every: POLL_INTERVAL_MS },
+        },
+      ),
+    ),
   );
 
-  console.log(`[Poller] Scheduled ${toSchedule.length} wallets (${existingIds.size} already active)`);
+  console.log(
+    `[Poller] Scheduled ${toSchedule.length} wallets (${existingIds.size} already active)`,
+  );
 }
 
 export async function closeQueue(): Promise<void> {

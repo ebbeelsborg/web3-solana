@@ -1,9 +1,12 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 
-const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+const rpcUrl =
+  process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
 
 /** SPL Token Program ID - the smart contract that manages token accounts */
-const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+const TOKEN_PROGRAM_ID = new PublicKey(
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+);
 
 export const solanaConnection = new Connection(rpcUrl, {
   commitment: "confirmed",
@@ -13,6 +16,9 @@ export const solanaConnection = new Connection(rpcUrl, {
 });
 
 export function isValidSolanaAddress(address: string): boolean {
+  if (typeof address !== "string" || address.trim() === "") {
+    return false;
+  }
   try {
     new PublicKey(address);
     return true;
@@ -32,7 +38,7 @@ export interface TransactionInfo {
 
 export async function fetchRecentTransactions(
   walletAddress: string,
-  limit = 20
+  limit = 20,
 ): Promise<TransactionInfo[]> {
   const pubkey = new PublicKey(walletAddress);
   const signatures = await solanaConnection.getSignaturesForAddress(pubkey, {
@@ -72,7 +78,7 @@ export interface AddressBalances {
  * Reads from the SPL Token Program (smart contract) for token accounts.
  */
 export async function fetchAddressBalances(
-  address: string
+  address: string,
 ): Promise<AddressBalances> {
   const pubkey = new PublicKey(address);
 

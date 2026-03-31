@@ -11,7 +11,7 @@ const walletSchema = new Schema<IWalletDoc>(
   {
     address: { type: String, required: true, unique: true },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: false } }
+  { timestamps: { createdAt: "createdAt", updatedAt: false } },
 );
 
 export const WalletModel =

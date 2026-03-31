@@ -23,7 +23,7 @@ const transactionSchema = new Schema<ITransactionDoc>(
     status: { type: String, required: true, default: "success" },
     raw: { type: Schema.Types.Mixed, default: null },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: false } }
+  { timestamps: { createdAt: "createdAt", updatedAt: false } },
 );
 
 transactionSchema.index({ walletAddress: 1, slot: -1 });

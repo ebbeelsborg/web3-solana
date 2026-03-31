@@ -37,6 +37,7 @@ artifacts-monorepo/
 ## Key Files
 
 ### Backend (`artifacts/api-server/src/`)
+
 - `index.ts` — Connects to MongoDB, starts HTTP server + WebSocket + poller
 - `lib/solana.ts` — Solana RPC helpers (getSignaturesForAddress)
 - `lib/queue.ts` — BullMQ queue + worker (repeatable jobs per wallet)
@@ -44,11 +45,13 @@ artifacts-monorepo/
 - `routes/wallet.ts` — POST /wallet, GET /wallet/:address, GET /wallets
 
 ### Database (`lib/db/src/`)
+
 - `models/wallet.ts` — Wallet Mongoose model (address unique, createdAt)
 - `models/transaction.ts` — Transaction Mongoose model (signature unique, walletAddress, slot, blockTime, fee, status, raw, createdAt)
 - `index.ts` — `connectDb()` function + model exports
 
 ### Frontend (`artifacts/solana-tracker/src/`)
+
 - `App.tsx` — Router with Layout wrapper
 - `pages/dashboard.tsx` — Hero page with wallet input
 - `pages/wallet-view.tsx` — Transaction feed for a wallet
@@ -58,21 +61,21 @@ artifacts-monorepo/
 
 ## API Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/healthz` | Health check |
-| `POST` | `/api/wallet` | Add wallet (body: `{ address }`) |
-| `GET` | `/api/wallet/:address` | Get wallet + transactions |
-| `GET` | `/api/wallets` | List all tracked wallets |
-| `WS` | `/ws` | WebSocket for live updates |
+| Method | Path                   | Description                      |
+| ------ | ---------------------- | -------------------------------- |
+| `GET`  | `/api/healthz`         | Health check                     |
+| `POST` | `/api/wallet`          | Add wallet (body: `{ address }`) |
+| `GET`  | `/api/wallet/:address` | Get wallet + transactions        |
+| `GET`  | `/api/wallets`         | List all tracked wallets         |
+| `WS`   | `/ws`                  | WebSocket for live updates       |
 
 ## Environment Variables
 
-| Variable | Description |
-|---|---|
-| `MONGODB_URI` | MongoDB Atlas connection string |
+| Variable         | Description                                                 |
+| ---------------- | ----------------------------------------------------------- |
+| `MONGODB_URI`    | MongoDB Atlas connection string                             |
 | `SOLANA_RPC_URL` | Solana mainnet RPC URL (optional, defaults to mainnet-beta) |
-| `PORT` | API server port (auto-assigned) |
+| `PORT`           | API server port (auto-assigned)                             |
 
 ## TypeScript & Composite Projects
 

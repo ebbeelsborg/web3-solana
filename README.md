@@ -2,6 +2,8 @@
 
 A full-stack Web3 monitoring dashboard that tracks any Solana wallet address in real time. Paste a public address and immediately see its transaction history streaming live — no wallet connection, no private keys, purely read-only on-chain data.
 
+![5383DF2D-DC9C-40B5-A918-78966AB85B6E](https://github.com/user-attachments/assets/ec8f09c8-f093-47a3-b7ea-112adb7a0d48)
+
 ---
 
 ## Why This Is a Web3 App
@@ -36,24 +38,24 @@ What makes this Web3:
 
 ### Components
 
-| Component | Purpose |
-|-----------|---------|
-| [**Frontend**](docs/frontend.md) (React + Vite) | Dashboard to add wallets, live transaction feed per wallet. React Query for REST; WebSocket hook merges incoming txs into the cache without refresh. |
-| [**API**](docs/api.md) (Express) | REST endpoints to register wallets, fetch wallet + transactions, list all tracked wallets. WebSocket server at `/ws` for live push. |
+| Component                                          | Purpose                                                                                                                                                                    |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [**Frontend**](docs/frontend.md) (React + Vite)    | Dashboard to add wallets, live transaction feed per wallet. React Query for REST; WebSocket hook merges incoming txs into the cache without refresh.                       |
+| [**API**](docs/api.md) (Express)                   | REST endpoints to register wallets, fetch wallet + transactions, list all tracked wallets. WebSocket server at `/ws` for live push.                                        |
 | [**Job queue**](docs/job-queue.md) (BullMQ, Redis) | Async background jobs per wallet (every 20s). Polls Solana RPC, deduplicates against DB, inserts new txs, broadcasts via WebSocket. Redis-backed so jobs survive restarts. |
-| [**Database**](docs/database.md) (MongoDB) | Stores wallets and transactions. Cache and deduplication — the blockchain is the source of truth. |
-| [**Blockchain**](docs/blockchain.md) (Solana RPC) | Canonical source. We only read; we never sign or submit. |
-| [**SPL Token Program**](docs/smart-contracts.md) | Smart contract that manages token accounts. We read token balances via `getParsedTokenAccountsByOwner`. |
+| [**Database**](docs/database.md) (MongoDB)         | Stores wallets and transactions. Cache and deduplication — the blockchain is the source of truth.                                                                          |
+| [**Blockchain**](docs/blockchain.md) (Solana RPC)  | Canonical source. We only read; we never sign or submit.                                                                                                                   |
+| [**SPL Token Program**](docs/smart-contracts.md)   | Smart contract that manages token accounts. We read token balances via `getParsedTokenAccountsByOwner`.                                                                    |
 
 **Project structure**
 
-| Architecture | Folder |
-|--------------|--------|
-| Frontend | `artifacts/solana-tracker/` |
-| Backend | `artifacts/api-server/` (app, routes) |
-| Job queue | `artifacts/api-server/src/lib/queue.ts`, `redis.ts` |
-| Database | `lib/db/` (models, connection) |
-| Blockchain client | `artifacts/api-server/src/lib/solana.ts` |
+| Architecture                 | Folder                                                             |
+| ---------------------------- | ------------------------------------------------------------------ |
+| Frontend                     | `artifacts/solana-tracker/`                                        |
+| Backend                      | `artifacts/api-server/` (app, routes)                              |
+| Job queue                    | `artifacts/api-server/src/lib/queue.ts`, `redis.ts`                |
+| Database                     | `lib/db/` (models, connection)                                     |
+| Blockchain client            | `artifacts/api-server/src/lib/solana.ts`                           |
 | Token balances (SPL Program) | `fetchAddressBalances` in solana.ts, GET /wallet/:address/balances |
 
 Shared: `lib/api-spec/`, `lib/api-client-react/`, `lib/api-zod/` (OpenAPI codegen).

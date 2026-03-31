@@ -9,9 +9,12 @@ const corsOrigin = process.env.CORS_ORIGIN;
 app.use(
   cors({
     origin: corsOrigin
-      ? corsOrigin.split(",").map((o) => o.trim()).filter(Boolean)
+      ? corsOrigin
+          .split(",")
+          .map((o) => o.trim())
+          .filter(Boolean)
       : true,
-  })
+  }),
 );
 
 app.use(express.json({ limit: "100kb" }));
@@ -23,7 +26,7 @@ app.use(
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
-  })
+  }),
 );
 
 app.use("/api", router);

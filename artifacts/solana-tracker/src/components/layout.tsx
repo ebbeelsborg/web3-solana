@@ -1,8 +1,22 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useListWallets, useAddWallet, getListWalletsQueryKey } from "@workspace/api-client-react";
+import {
+  useListWallets,
+  useAddWallet,
+  getListWalletsQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Wallet as WalletIcon, Search, Plus, Activity, BookOpen, Hexagon, Loader2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import {
+  Wallet as WalletIcon,
+  Search,
+  Plus,
+  Activity,
+  BookOpen,
+  Hexagon,
+  Loader2,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -15,7 +29,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const { mutate: addWallet, isPending: isAdding } = useAddWallet();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
+
   const [newWallet, setNewWallet] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -40,7 +54,9 @@ export function Layout({ children }: { children: ReactNode }) {
           const walletAddress = error?.data?.address;
           if (status === 409 && walletAddress) {
             setNewWallet("");
-            queryClient.invalidateQueries({ queryKey: getListWalletsQueryKey() });
+            queryClient.invalidateQueries({
+              queryKey: getListWalletsQueryKey(),
+            });
             setLocation(`/wallet/${walletAddress}`);
             return;
           }
@@ -49,8 +65,8 @@ export function Layout({ children }: { children: ReactNode }) {
             title: "Failed to track wallet",
             description: error?.data?.error || "Invalid Solana address.",
           });
-        }
-      }
+        },
+      },
     );
   };
 
@@ -70,8 +86,12 @@ export function Layout({ children }: { children: ReactNode }) {
                 <Hexagon className="w-6 h-6 text-primary-foreground fill-current opacity-80" />
               </div>
               <div>
-                <h1 className="font-display font-bold text-xl text-foreground">SolTracker</h1>
-                <p className="text-xs text-muted-foreground font-mono">Live Blockchain Monitor</p>
+                <h1 className="font-display font-bold text-xl text-foreground">
+                  SolTracker
+                </h1>
+                <p className="text-xs text-muted-foreground font-mono">
+                  Live Blockchain Monitor
+                </p>
               </div>
             </div>
 
@@ -83,26 +103,37 @@ export function Layout({ children }: { children: ReactNode }) {
                   placeholder="Enter SOL address..."
                   className="bg-black/20 border-white/10 focus-visible:ring-primary/50 font-mono text-sm"
                 />
-                <Button type="submit" size="icon" disabled={isAdding} className="bg-primary hover:bg-primary/80 text-primary-foreground">
-                  {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={isAdding}
+                  className="bg-primary hover:bg-primary/80 text-primary-foreground"
+                >
+                  {isAdding ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
                 </Button>
               </form>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 py-2 space-y-6">
               <div>
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">Navigation</h3>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
+                  Navigation
+                </h3>
                 <nav className="space-y-1">
-                  <Link 
-                    href="/" 
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location === '/' ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'}`}
+                  <Link
+                    href="/"
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location === "/" ? "bg-white/10 text-foreground" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
                   >
                     <Activity className="w-4 h-4" />
                     <span className="font-medium text-sm">Dashboard</span>
                   </Link>
-                  <Link 
-                    href="/guide" 
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location === '/guide' ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'}`}
+                  <Link
+                    href="/guide"
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location === "/guide" ? "bg-white/10 text-foreground" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
                   >
                     <BookOpen className="w-4 h-4" />
                     <span className="font-medium text-sm">User Guide</span>
@@ -113,9 +144,14 @@ export function Layout({ children }: { children: ReactNode }) {
               <div>
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2 flex justify-between items-center">
                   <span>Tracked Wallets</span>
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white/5">{wallets?.length || 0}</Badge>
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] px-1.5 py-0 bg-white/5"
+                  >
+                    {wallets?.length || 0}
+                  </Badge>
                 </h3>
-                
+
                 {isLoadingWallets ? (
                   <div className="flex justify-center p-4">
                     <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -131,15 +167,18 @@ export function Layout({ children }: { children: ReactNode }) {
                         key={wallet.id}
                         href={`/wallet/${wallet.address}`}
                         className={`flex items-center justify-between px-3 py-2.5 rounded-lg transition-all group ${
-                          location === `/wallet/${wallet.address}` 
-                            ? 'bg-primary/10 border border-primary/20 text-primary shadow-[inset_0_0_20px_rgba(0,255,255,0.05)]' 
-                            : 'border border-transparent text-muted-foreground hover:bg-white/5 hover:text-foreground'
+                          location === `/wallet/${wallet.address}`
+                            ? "bg-primary/10 border border-primary/20 text-primary shadow-[inset_0_0_20px_rgba(0,255,255,0.05)]"
+                            : "border border-transparent text-muted-foreground hover:bg-white/5 hover:text-foreground"
                         }`}
                       >
                         <div className="flex items-center gap-3 overflow-hidden">
-                          <WalletIcon className={`w-4 h-4 shrink-0 ${location === `/wallet/${wallet.address}` ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+                          <WalletIcon
+                            className={`w-4 h-4 shrink-0 ${location === `/wallet/${wallet.address}` ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}
+                          />
                           <span className="font-mono text-sm truncate">
-                            {wallet.address.slice(0, 6)}...{wallet.address.slice(-6)}
+                            {wallet.address.slice(0, 6)}...
+                            {wallet.address.slice(-6)}
                           </span>
                         </div>
                       </Link>
@@ -156,13 +195,17 @@ export function Layout({ children }: { children: ReactNode }) {
       <main className="flex-1 flex flex-col relative z-10 overflow-hidden h-full">
         {/* Top Header */}
         <header className="h-16 border-b border-white/5 bg-card/20 backdrop-blur-md flex items-center px-4 justify-between shrink-0">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="text-muted-foreground hover:text-foreground"
           >
-            {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+            {isSidebarOpen ? (
+              <PanelLeftClose className="w-5 h-5" />
+            ) : (
+              <PanelLeftOpen className="w-5 h-5" />
+            )}
           </Button>
 
           <div className="flex items-center gap-4">
